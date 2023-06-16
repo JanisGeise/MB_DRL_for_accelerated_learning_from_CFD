@@ -269,8 +269,7 @@ def plot_mean_std_trajectories(settings: dict, data: list) -> None:
     :param data: trajectory data to plot
     :return: None
     """
-    # fig, ax = plt.subplots(nrows=2, ncols=4, figsize=(15, 8), sharey="row", sharex="col")
-    fig, ax = plt.subplots(nrows=4, ncols=2, figsize=(7, 8), sharey="col", sharex="all")
+    fig, ax = plt.subplots(nrows=4, ncols=2, figsize=(6, 8), sharey="col", sharex="all")
     epochs = pt.tensor(list(range(len(data[0]["cl"][1, :, 0])))) / 10       # TODO: only for Re = 100
     e = [24, 74, 124, 199]
     for n in range(len(data)):

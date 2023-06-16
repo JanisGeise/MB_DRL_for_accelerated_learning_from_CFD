@@ -17,7 +17,8 @@ def get_number_of_discards_and_total_trajectories(path: str) -> pt.Tensor:
             data = f.readlines()
 
         for line in data:
-            if line.startswith("discarding trajectory"):
+            # data was created without logger, but if training run with current version -> logger
+            if line.startswith("discarding trajectory") or line.startswith("INFO:root:discarding trajectory"):
                 counter_failed += 1
             try:
                 tmp = line.split(",")[0]
