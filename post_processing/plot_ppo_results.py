@@ -25,10 +25,12 @@ from os import mkdir, path
 from ppo_data_loader import *
 
 
-def plot_results_vs_episode(settings: dict, cd_mean: Union[list, pt.Tensor], cd_std: Union[list, pt.Tensor],
-                            cl_mean: Union[list, pt.Tensor], cl_std: Union[list, pt.Tensor],
-                            actions_mean: Union[list, pt.Tensor], actions_std: Union[list, pt.Tensor],
-                            n_cases: int = 1, plot_action: bool = True) -> None:
+def plot_coefficients_vs_episode(settings: dict, cd_mean: Union[list, pt.Tensor], cd_std: Union[list, pt.Tensor],
+                                 cl_mean: Union[list, pt.Tensor], cl_std: Union[list, pt.Tensor],
+                                 actions_mean: Union[list, pt.Tensor] = None,
+                                 actions_std: Union[list, pt.Tensor] = None,
+                                 n_cases: int = 1, plot_action: bool = False,
+                                 ylabel: list = ["$\\bar{c}_L$", "$\\bar{c}_D$", "$\\bar{\omega}$"]) -> None:
     """
     plot cl, cd and actions (if specified) depending on the episode (training)
 
@@ -41,13 +43,14 @@ def plot_results_vs_episode(settings: dict, cd_mean: Union[list, pt.Tensor], cd_
     :param actions_std: corresponding standard deviation of the actions done over the training periode
     :param n_cases: number of cases to compare (= number of imported data)
     :param plot_action: if 'True' cl, cd and actions will be plotted, otherwise only cl and cd will be plotted
+    :param ylabel: ylabels for plots [cl, cd, action]
     :return: None
     """
     if plot_action:
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(16, 5))
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(6, 3))
         n_subfig = 3
     else:
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15, 6))
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(6, 3))
         n_subfig = 2
 
     for c in range(n_cases):
@@ -56,26 +59,26 @@ def plot_results_vs_episode(settings: dict, cd_mean: Union[list, pt.Tensor], cd_
                 ax[i].plot(range(len(cl_mean[c])), cl_mean[c], color=settings["color"][c], label=settings["legend"][c])
                 ax[i].fill_between(range(len(cl_mean[c])), cl_mean[c] - cl_std[c], cl_mean[c] + cl_std[c],
                                    color=settings["color"][c], alpha=0.3)
-                ax[i].set_ylabel("$\\bar{c}_L$")
+                ax[i].set_ylabel(ylabel[0])
 
             elif i == 1:
                 ax[i].plot(range(len(cd_mean[c])), cd_mean[c], color=settings["color"][c])
                 ax[i].fill_between(range(len(cd_mean[c])), cd_mean[c] - cd_std[c], cd_mean[c] + cd_std[c],
                                    color=settings["color"][c], alpha=0.3)
-                ax[i].set_ylabel("$\\bar{c}_D$")
+                ax[i].set_ylabel(ylabel[1])
 
             elif plot_action:
                 ax[i].plot(range(len(actions_mean[c])), actions_mean[c], color=settings["color"][c])
                 ax[i].fill_between(range(len(actions_mean[c])), actions_mean[c] - actions_std[c],
                                    actions_mean[c] + actions_std[c], color=settings["color"][c], alpha=0.3)
-                ax[i].set_ylabel("$\\bar{\omega}$")
+                ax[i].set_ylabel(ylabel[2])
 
             ax[i].set_xlabel("$e$")
 
     fig.tight_layout()
-    fig.legend(loc="upper right", framealpha=1.0, ncol=3)
-    fig.subplots_adjust(wspace=0.25, top=0.9)
-    plt.savefig(join(settings["main_load_path"], setup["path_controlled"], "plots", "coefficients_vs_episode.png"),
+    fig.legend(loc="upper center", framealpha=1.0, ncol=3)
+    fig.subplots_adjust(wspace=0.35, top=0.88)
+    plt.savefig(join(settings["main_load_path"], settings["path_controlled"], "plots", "coefficients_vs_episode.png"),
                 dpi=340)
     plt.show(block=False)
     plt.pause(2)
@@ -106,7 +109,7 @@ def plot_rewards_vs_episode(settings: dict, reward_mean: Union[list, pt.Tensor],
 
         # mark the MF episodes for the 1st training of each case, assuming that the 1st case (c == 0) is model-free
         if mf_episodes and c > 0:
-            if c == n_cases-1:
+            if c == n_cases - 1:
                 # dummy point for legend, because crosses all have different colors, but only required once in legend
                 ax.scatter(mf_episodes[c], reward_mean[c][pt.tensor(mf_episodes[c])], color="black",
                            label="$CFD$ $episode$", marker="x")
@@ -120,9 +123,9 @@ def plot_rewards_vs_episode(settings: dict, reward_mean: Union[list, pt.Tensor],
 
     ax.set_ylabel("$\\bar{r}$")
     ax.set_xlabel("$e$")
-    ax.set_xlim(0, len(reward_mean[0]))
+    ax.set_xlim(0, max([len(i) for i in reward_mean]))
     fig.tight_layout()
-    ax.legend(loc="lower right", framealpha=1.0, ncol=2)
+    ax.legend(loc="lower right", framealpha=1.0, ncol=1)
     fig.subplots_adjust(wspace=0.2)
     plt.savefig(join(settings["main_load_path"], settings["path_controlled"], "plots", "rewards_vs_episode.png"),
                 dpi=340)
@@ -158,7 +161,7 @@ def plot_cl_cd_alpha_beta(settings: dict, controlled_cases: Union[list, pt.Tenso
         save_name = "comparison_alpha_beta"
         ylabels = ["$\\alpha$", "$\\beta$"]
         n_cases = range(1, len(settings["case_name"]) + 1)
-        x_min = 4 * factor      # control starts at t = 4s, so there are no alpha & beta available for t < 4s
+        x_min = 4 * factor  # control starts at t = 4s, so there are no alpha & beta available for t < 4s
 
     for c in n_cases:
         for i in range(2):
@@ -295,8 +298,8 @@ def plot_mean_std_trajectories(settings: dict, data: list, factor: int = 10) -> 
     epochs = pt.tensor(list(range(len(data[0]["cl"][1, :, 0])))) / factor
     e = [24, 74, 124, 199]
     for n in range(len(data)):
-        for k in range(4):          # k = rows
-            for i in range(2):      # i = cols
+        for k in range(4):  # k = rows
+            for i in range(2):  # i = cols
                 if i == 0:
                     mean_tmp = pt.mean(data[n]["cd"][e[k], :, :], dim=1)
                     std_tmp = pt.std(data[n]["cd"][e[k], :, :], dim=1)
@@ -348,7 +351,7 @@ if __name__ == "__main__":
         #               "e200_r10_b10_f8_MB_5models/seed1/", "e200_r10_b10_f8_MB_5models_threshold40/seed1/",
         #               "e200_r10_b10_f8_MB_10models_threshold50/seed0/",
         #               "e200_r10_b10_f8_MB_10models_threshold30/seed4/"],
-        "e_trajectory": [4, 9, 24, 49, 74, 99, 124, 149, 174, 199],   # episodes trajectories (cl & cd, not avg.)
+        "e_trajectory": [4, 9, 24, 49, 74, 99, 124, 149, 174, 199],  # episodes trajectories (cl & cd, not avg.)
         "n_probes": 12,  # number of probes placed in flow field
         "avg_over_cases": True,  # if cases should be averaged over, e.g. different seeds
         "plot_final_res": False,  # if the final policy already ran in openfoam, plot the results
@@ -361,8 +364,8 @@ if __name__ == "__main__":
     }
 
     # create directory for plots
-    if not path.exists(setup["main_load_path"] + setup["path_controlled"] + "plots"):
-        mkdir(setup["main_load_path"] + setup["path_controlled"] + "plots")
+    if not path.exists(join(setup["main_load_path"], setup["path_controlled"], "plots")):
+        mkdir(join(setup["main_load_path"], setup["path_controlled"], "plots"))
 
     # use latex fonts
     plt.rcParams.update({"text.usetex": True})
@@ -411,10 +414,9 @@ if __name__ == "__main__":
     plot_variance_of_beta_dist(setup, averaged_data["var_beta_fct"], n_cases=len(setup["case_name"]))
 
     # plot mean cl and cd wrt to episode
-    plot_results_vs_episode(setup, cd_mean=averaged_data["mean_cd"], cd_std=averaged_data["std_cd"],
-                            cl_mean=averaged_data["mean_cl"], cl_std=averaged_data["std_cl"],
-                            actions_mean=averaged_data["mean_actions"], actions_std=averaged_data["std_actions"],
-                            n_cases=len(setup["case_name"]), plot_action=False)
+    plot_coefficients_vs_episode(setup, cd_mean=averaged_data["mean_cd"], cd_std=averaged_data["std_cd"],
+                                 cl_mean=averaged_data["mean_cl"], cl_std=averaged_data["std_cl"],
+                                 n_cases=len(setup["case_name"]), plot_action=False)
 
     # compare trajectories over the course of the training
     for e in setup["e_trajectory"]:
@@ -456,4 +458,3 @@ if __name__ == "__main__":
 
         # plot alpha and beta of the controlled cases
         plot_cl_cd_alpha_beta(setup, traj, plot_coeffs=False)
-
