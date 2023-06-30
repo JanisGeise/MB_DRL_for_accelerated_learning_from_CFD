@@ -8,7 +8,7 @@ from glob import glob
 from os.path import join
 from os import path, mkdir
 
-from plot_ppo_results import plot_rewards_vs_episode, plot_coefficients_vs_episode
+from plot_results_cylinder import plot_rewards_vs_episode, plot_coefficients_vs_episode
 
 
 def load_rewards(load_path: str) -> dict:
@@ -83,9 +83,9 @@ if __name__ == "__main__":
 
     # plot the rewards
     plot_rewards_vs_episode(setup, results["rewards_mean"], results["rewards_std"], n_cases=len(setup["case_name"]),
-                            mf_episodes=results["MF_episodes"])
+                            mf_episodes=results["MF_episodes"], env="rotatingPinball2D")
 
     # plot cl & cd wrt episode
     plot_coefficients_vs_episode(setup, results["cd_mean"], results["cd_std"], results["cl_mean"], results["cl_std"],
-                                 ylabel=["$| \sum \\bar{c}_{L, i} |$", "$| \sum \\bar{c}_{D, i} |$"],
-                                 n_cases=len(setup["case_name"]))
+                                 ylabel=[r"$| \sum \\bar{c}_{L, i} |$", r"$| \sum \\bar{c}_{D, i} |$"],
+                                 n_cases=len(setup["case_name"]), env="rotatingPinball2D")

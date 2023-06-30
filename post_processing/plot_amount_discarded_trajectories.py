@@ -18,8 +18,8 @@ def load_amount_mb_trajectories_and_discards(load_path: str) -> pt.Tensor:
     """
     n_failed, n_trajectories = [], []
 
-    for seed in sorted(glob(join(load_path, "*.log")), key=lambda x: int(x.split(".")[-2][-1])):
-        counter, counter_failed = 0.0, 0.0          # need to float in order to compute mean later
+    for seed in sorted(glob(join(load_path, "*log*")), key=lambda x: int(x.split(".")[-2][-1])):
+        counter, counter_failed = 0.0, 0.0          # need to be a float in order to compute mean later
         with open(seed, "r") as f:
             data = f.readlines()
 

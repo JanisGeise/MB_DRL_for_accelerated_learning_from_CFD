@@ -1,5 +1,4 @@
 # Model-based deep reinforcement learning for accelerated learning from flow simulations
-cfor structure compare to: https://github.com/AndreWeiner/sgs_model_test_transient
 
 ## Introduction
 **TODO:**

@@ -1,13 +1,6 @@
 """
-    brief:
-        - script responsible for handling all the loading, sorting and merging of the data created when running the
-          PPO-training for different cases
-
-    dependencies:
-        - None
-
-    prerequisites:
-        - None
+    this script handles all the loading, sorting and merging of the data created when running the PPO-training for
+    the 'rotatingCylinder2D' environment
 """
 import torch as pt
 
@@ -15,15 +8,15 @@ from glob import glob
 from os.path import join
 
 
-def load_trajectory_data(path: str) -> dict:
+def load_trajectory_data(load_path: str) -> dict:
     """
-    load observations_*.pkl files containing all the data generated during training and sort them into a dict
+    load observations_*.pt files containing all the data generated during training and sort them into a dict
 
-    :param path: path to directory containing the files
+    :param load_path: path to directory containing the files
     :return: dict with actions, states, cl, cd. Each parameter contains one tensor with the length of N_episodes, each
              entry has all the trajectories sampled in this episode (cols = N_trajectories, rows = length_trajectories)
     """
-    files = sorted(glob(join(path, "observations_*.pt")), key=lambda x: int(x.split("_")[-1].split(".")[0]))
+    files = sorted(glob(join(load_path, "observations_*.pt")), key=lambda x: int(x.split("_")[-1].split(".")[0]))
     observations = [pt.load(open(file, "rb")) for file in files]
     traj_length, counter, mb_episodes = len(observations[0][0]["actions"]), 0, 0
 
@@ -89,50 +82,28 @@ def load_trajectory_data(path: str) -> dict:
     data["MB_MF"] = mb_episodes / (len(observations) - mb_episodes)
     data["MF_episodes"] = len(observations) - mb_episodes
 
-    """ maybe not working due to changes in implementation of MB-training
-    
-    # import and sort training- and validation losses of the environment models, if MB-DRL was used
-    if len(glob(path + "env_model_loss_*.pt")) > 0:
-        files = natsorted(glob(path + "env_model_loss_*.pt"))
-        losses = [pt.load(open(file, "rb")) for file in files]
-
-        shape = (len(losses), losses[0]["val_loss_cd"].size()[0], losses[0]["val_loss_cd"].size()[-1])
-        cd_train_loss, cd_val_loss = pt.zeros(shape), pt.zeros(shape)
-        cl_p_train_loss, cl_p_val_loss = pt.zeros(shape), pt.zeros(shape)
-
-        # if early stopping is used -> losses don't have the same shape anymore...
-        try:
-            for l in range(len(losses)):
-                cd_train_loss[l, :, :], cd_val_loss[l, :, :] = losses[l]["train_loss_cd"], losses[l]["train_loss_cl_p"]
-                cl_p_train_loss[l, :, :], cl_p_val_loss[l, :, :] = losses[l]["val_loss_cd"], losses[l]["val_loss_cl_p"]
-        except RuntimeError:
-            pass
-
-        shape = (cd_train_loss.size()[0] * cd_train_loss.size()[1], cd_train_loss.size()[-1])
-        data["train_loss_cd"], data["val_loss_cd"] = cd_train_loss.reshape(shape), cd_val_loss.reshape(shape)
-        data["train_loss_cl_p"], data["val_loss_cl_p"] = cl_p_train_loss.reshape(shape), cl_p_val_loss.reshape(shape)
-    """
     return data
 
 
-def load_all_data(settings: dict) -> list:
+def load_all_data(settings: dict, avg_over_cases: bool = True) -> list:
     """
     wrapper function for loading the results of the PPO-training and sorting it wrt episodes
 
     :param settings: setup containing all paths etc.
+    :param avg_over_cases: flag if the data should be avg. over multiple seed values, if yes then these results need to
+                           be located as subdirectories in the case directory and named 'seed*'
     :return: a list containing a dictionary with all the data from each case
     """
     # load the results of the training
     loaded_data = []
 
-    if settings["avg_over_cases"]:
+    if avg_over_cases:
         for c in range(len(settings["case_name"])):
             case_data = []
 
             # assuming each case directory contains subdirectories with training data named seed*
             # sorted is just to make debugging easier
-            dirs = sorted([d for d in glob(join(settings["main_load_path"], settings["path_controlled"],
-                                           settings["case_name"][c], "seed[0-9]"))])
+            dirs = sorted([d for d in glob(join(settings["load_path"], settings["case_name"][c], "seed[0-9]"))])
 
             for d in dirs:
                 case_data.append(load_trajectory_data(d))
@@ -142,8 +113,7 @@ def load_all_data(settings: dict) -> list:
 
     else:
         for c in range(len(settings["case_name"])):
-            loaded_data.append(load_trajectory_data(join(settings["main_load_path"], settings["path_controlled"],
-                                                    settings["case_name"][c])))
+            loaded_data.append(load_trajectory_data(join(settings["load_path"], settings["case_name"][c])))
     return loaded_data
 
 
