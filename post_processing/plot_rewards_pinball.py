@@ -37,6 +37,9 @@ def load_rewards(load_path: str) -> dict:
         # mean & std. values are sufficient, so delete the actual trajectories from dict
         obs_out.pop(key)
 
+    # get the model-free episodes
+    obs_out["MF_episodes"] = [i for i, o in enumerate(obs) if not "generated_by" in o[0]]
+
     return obs_out
 
 
@@ -53,12 +56,11 @@ if __name__ == "__main__":
     setup = {
         "main_load_path": r"/home/janis/Hiwi_ISM/results_drlfoam_MB/",
         "path_controlled": r"run/final_routine_pinball_AWS/",
-        "case_name": ["test_pinball_lr", "e150_r10_b10_f300_MB_5models_thr40_lr1e-4",
-                      "e150_r10_b10_f300_MB_5models_thr40_lr2e-4"],
+        "case_name": ["test_pinball_lr", "e150_r10_b10_f300_MB_1model_lr1e-5",
+                      "e150_r10_b10_f300_MB_5models_thr40_lr1e-5", "e150_r10_b10_f300_MB_10models_thr50_lr1e-5"],
         "color": ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
                   '#bcbd22', '#17becf'],  # default color cycle
-        # "legend": ["MF", "MB, $N_{m} = 1$", "MB, $N_{m} = 5, N_{thr} = 2$", "MB, $N_{m} = 10, N_{thr} = 5$"]
-        "legend": ["MF", "MB, $N_{m} = 5, lr=1e-4$", "MB, $N_{m} = 5, lr=2e-4$"]
+        "legend": ["MF", "MB, $N_{m} = 1$", "MB, $N_{m} = 5, N_{thr} = 2$", "MB, $N_{m} = 10, N_{thr} = 5$"]
     }
     # create directory for plots
     if not path.exists(join(setup["main_load_path"], setup["path_controlled"], "plots")):
@@ -75,8 +77,13 @@ if __name__ == "__main__":
     # re-arrange for easier plotting
     results = resort_results(results)
 
+    # print the amount of MF-episodes
+    for i, e in enumerate(results["MF_episodes"]):
+        print(f"found {len(e)} CFD episodes (= {round(len(e) / len(results['rewards_mean'][i]) * 100, 2)} %)")
+
     # plot the rewards
-    plot_rewards_vs_episode(setup, results["rewards_mean"], results["rewards_std"], n_cases=len(setup["case_name"]))
+    plot_rewards_vs_episode(setup, results["rewards_mean"], results["rewards_std"], n_cases=len(setup["case_name"]),
+                            mf_episodes=results["MF_episodes"])
 
     # plot cl & cd wrt episode
     plot_coefficients_vs_episode(setup, results["cd_mean"], results["cd_std"], results["cl_mean"], results["cl_std"],
