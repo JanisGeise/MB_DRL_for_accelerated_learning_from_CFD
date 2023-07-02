@@ -1,19 +1,25 @@
 """
- load and plot the rewards for the 'rotatingPinball2D'
+ load and plot the results of th training for the 'rotatingPinball2D' environment
 """
 import torch as pt
 import matplotlib.pyplot as plt
 
 from glob import glob
 from os.path import join
-from os import path, mkdir
+from os import path, makedirs
 
 from plot_results_cylinder import plot_rewards_vs_episode, plot_coefficients_vs_episode
 
 
 def load_rewards(load_path: str) -> dict:
+    """
+    loads the observations_*.pt files and computes the mean and std. deviation of the results wrt episodes
+
+    :param load_path: path to the top-level directory of the case for which the results should be loaded
+    :return: dict containing the mean rewards, cl & cd values along with their corresponding std. deviation
+    """
     files = sorted(glob(join(load_path, "observations_*.pt")), key=lambda x: int(x.split("_")[-1].split(".")[0]))
-    obs = [pt.load(join(load_path, f)) for f in files]
+    obs = [pt.load(join(f)) for f in files]
     obs_out = {"rewards": [], "cl": [], "cd": []}
 
     for episode in range(len(obs)):
@@ -44,6 +50,11 @@ def load_rewards(load_path: str) -> dict:
 
 
 def resort_results(data):
+    """
+    resort the loaded results from list(dict) to dict(list) in order to plot the results easier / more efficient
+    :param data: the loaded results from the trainings
+    :return: the resorted data
+    """
     data_out = {}
     for key in list(data[0].keys()):
         data_out[key] = [i[key] for i in results]
@@ -51,28 +62,25 @@ def resort_results(data):
     return data_out
 
 
+def plot_coefficients_of_final_policy():
+    pass
+
+
 if __name__ == "__main__":
-    # Setup
-    setup = {
-        "main_load_path": r"/home/janis/Hiwi_ISM/results_drlfoam_MB/",
-        "path_controlled": r"run/final_routine_pinball_AWS/",
-        "case_name": ["test_pinball_lr", "e150_r10_b10_f300_MB_1model_lr1e-5",
-                      "e150_r10_b10_f300_MB_5models_thr40_lr1e-5", "e150_r10_b10_f300_MB_10models_thr50_lr1e-5"],
-        "color": ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
-                  '#bcbd22', '#17becf'],  # default color cycle
-        "legend": ["MF", "MB, $N_{m} = 1$", "MB, $N_{m} = 5, N_{thr} = 2$", "MB, $N_{m} = 10, N_{thr} = 5$"]
-    }
+    load_path = join("..", "data", "rotatingPinball2D")
+    case_name = ["e150_r10_b10_f300_MF", "e150_r10_b10_f300_MB_1model", "e150_r10_b10_f300_MB_5models_thr2",
+                 "e150_r10_b10_f300_MB_10models_thr5"]
+    legend = ["MF", "MB, $N_{m} = 1$", "MB, $N_{m} = 5, N_{thr} = 2$", "MB, $N_{m} = 10, N_{thr} = 5$"]
+
     # create directory for plots
-    if not path.exists(join(setup["main_load_path"], setup["path_controlled"], "plots")):
-        mkdir(join(setup["main_load_path"], setup["path_controlled"], "plots"))
+    if not path.exists(join("..", "plots", "rotatingPinball2D")):
+        makedirs(join("..", "plots", "rotatingPinball2D"))
 
     # use latex fonts
     plt.rcParams.update({"text.usetex": True})
 
     # load rewards
-    results = []
-    for c in setup["case_name"]:
-        results.append(load_rewards(join(setup["main_load_path"], setup["path_controlled"], c, "seed0")))
+    results = [load_rewards(join(load_path, c, "seed0")) for c in case_name]
 
     # re-arrange for easier plotting
     results = resort_results(results)
@@ -81,11 +89,16 @@ if __name__ == "__main__":
     for i, e in enumerate(results["MF_episodes"]):
         print(f"found {len(e)} CFD episodes (= {round(len(e) / len(results['rewards_mean'][i]) * 100, 2)} %)")
 
-    # plot the rewards
-    plot_rewards_vs_episode(setup, results["rewards_mean"], results["rewards_std"], n_cases=len(setup["case_name"]),
-                            mf_episodes=results["MF_episodes"], env="rotatingPinball2D")
+    # plot the rewards without std.
+    plot_rewards_vs_episode(results["rewards_mean"], n_cases=len(case_name), mf_episodes=results["MF_episodes"],
+                            env="rotatingPinball2D", legend=legend)
+    """
+    # plot the rewards with std. (if needed)
+    plot_rewards_vs_episode(results["rewards_mean"], results["rewards_std"], n_cases=len(setup["case_name"]),
+                            mf_episodes=results["MF_episodes"], env="rotatingPinball2D", legend=legend)
+    """
 
     # plot cl & cd wrt episode
-    plot_coefficients_vs_episode(setup, results["cd_mean"], results["cd_std"], results["cl_mean"], results["cl_std"],
-                                 ylabel=[r"$| \sum \\bar{c}_{L, i} |$", r"$| \sum \\bar{c}_{D, i} |$"],
-                                 n_cases=len(setup["case_name"]), env="rotatingPinball2D")
+    plot_coefficients_vs_episode(results["cd_mean"], results["cd_std"], results["cl_mean"], results["cl_std"],
+                                 ylabel=["$| \sum \\bar{c}_{L, i} |$", "$| \sum \\bar{c}_{D, i} |$"],
+                                 n_cases=len(case_name), env="rotatingPinball2D", legend=legend)
