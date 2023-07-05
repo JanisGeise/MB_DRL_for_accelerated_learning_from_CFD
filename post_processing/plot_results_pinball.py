@@ -83,14 +83,14 @@ def read_forces_for_each_cylinder(load_path: str) -> list:
 
 
 def plot_coefficients_for_each_cylinder(data_controlled: list, data_uncontrolled: list, legend_entries: list,
-                                        factor: int = 10) -> None:
+                                        factor: int = 1) -> None:
     """
     plot cl & cd of the final policies wrt the cylinder and time
 
     :param data_controlled: list containing the data of the uncontrolled flow
     :param data_uncontrolled: list containing the data of the controlled flow for each case
     :param legend_entries: list containing the legend entries
-    :param factor: factor for converting the physical time into non-dimensional time, t^* = u * t / d
+    :param factor: factor for converting the physical time into non-dimensional time, t^* = u * t / d; d = 1 (pinball)
     :return: None
     """
     fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(6, 8), sharex="col")
@@ -123,6 +123,44 @@ def plot_coefficients_for_each_cylinder(data_controlled: list, data_uncontrolled
     fig.legend(loc="upper center", framealpha=1.0, ncol=3)
     fig.subplots_adjust(wspace=0.4, top=0.92)
     plt.savefig(join("..", "plots", "rotatingPinball2D", "cl_cd_vs_cylinder_final_policy.png"), dpi=340)
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close("all")
+
+
+def plot_omega_for_each_cylinder(data: list, legend_entries: list, factor: int = 1, start_control: int = 200) -> None:
+    """
+    plot cl & cd of the final policies wrt the cylinder and time
+
+    :param data: list containing the data of the controlled flow for each case
+    :param legend_entries: list containing the legend entries
+    :param factor: factor for converting the physical time into non-dimensional time, t^* = u * t / d; d = 1 (pinball)
+    :param start_control: time when the flow control starts
+    :return: None
+    """
+    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(6, 8), sharex="col")
+
+    # use default color cycle and black for the uncontrolled case
+    color = ["black", '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
+
+    for row in range(3):
+        for c in range(len(data)):
+            if row == 0:
+                # header contains white space, so the keys have white space as well
+                ax[row].plot(data[c]["t"] * factor, data[c][" omega_a"], label=legend_entries[c], color=color[c])
+            elif row == 1:
+                ax[row].plot(data[c]["t"] * factor, data[c][" omega_b"], color=color[c])
+            else:
+                ax[row].plot(data[c]["t"] * factor, data[c][" omega_c"], color=color[c])
+
+            ax[row].set_ylabel(f"$\omega_{row + 1}$")
+
+    ax[-1].set_xlabel("$t^*$")
+    ax[-1].set_xlim(start_control, 500 * factor)
+    fig.tight_layout()
+    fig.legend(loc="upper center", framealpha=1.0, ncol=3)
+    fig.subplots_adjust(wspace=0.4, top=0.93)
+    plt.savefig(join("..", "plots", "rotatingPinball2D", "omega_vs_cylinder_final_policy.png"), dpi=340)
     plt.show(block=False)
     plt.pause(2)
     plt.close("all")
@@ -179,7 +217,7 @@ if __name__ == "__main__":
 
     # plot the sum of the cl & cd values of the final policy
     plot_cl_cd_alpha_beta(controlled, uncontrolled, plot_coeffs=True, legend=legend, n_cases=len(case_name),
-                          control_start=200, env="rotatingPinball2D")
+                          control_start=200, env="rotatingPinball2D", factor=1)
 
     # now read forces for each cylinder and plot them (overwrite 'uncontrolled' & 'controlled' since not used anymore)
     uncontrolled = read_forces_for_each_cylinder(join(load_path, "uncontrolled"))
@@ -192,3 +230,9 @@ if __name__ == "__main__":
 
     # finally plot the forces for each case wrt the cylinder
     plot_coefficients_for_each_cylinder(controlled, uncontrolled, ["uncontrolled"] + legend)
+
+    # finally, plot the actions wrt the cylinder and time
+    omega = [pd.read_csv(join(load_path, c, "results_final_policy", "trajectory.csv"), sep=r",") for c in case_name]
+
+    # plot the actions wrt cylinder
+    plot_omega_for_each_cylinder(omega, legend)
