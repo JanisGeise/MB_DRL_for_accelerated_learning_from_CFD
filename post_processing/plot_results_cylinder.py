@@ -72,10 +72,14 @@ def plot_coefficients_vs_episode(cd_mean: Union[list, pt.Tensor], cd_std: Union[
                 ax[i].set_ylabel(ylabel[2])
 
             ax[i].set_xlabel("$e$")
+            ax[i].set_xlim(0, max([len(i) for i in cl_mean]))
 
     fig.tight_layout()
     fig.legend(loc="upper center", framealpha=1.0, ncol=2)
-    fig.subplots_adjust(wspace=0.35, top=0.82)
+    if env == "rotatingCylinder2D":
+        fig.subplots_adjust(wspace=0.35, top=0.76)
+    else:
+        fig.subplots_adjust(wspace=0.35, top=0.82)
     plt.savefig(join("..", "plots", env, "coefficients_vs_episode.png"), dpi=340)
     plt.show(block=False)
     plt.pause(2)
@@ -137,16 +141,21 @@ def plot_rewards_vs_episode(reward_mean: Union[list, pt.Tensor], reward_std: Uni
     plt.close("all")
 
 
-def plot_cl_cd_alpha_beta(settings: dict, controlled_cases: Union[list, pt.Tensor],
-                          uncontrolled_case: Union[list, pt.Tensor] = None, plot_coeffs=True, factor: int = 10) -> None:
+def plot_cl_cd_alpha_beta(controlled_cases: Union[list, pt.Tensor],
+                          uncontrolled_case: Union[list, pt.Tensor] = None, plot_coeffs=True, factor: int = 10,
+                          env: str = "rotatingCylinder2D", control_start: Union[int, float] = 4, legend: list = None,
+                          n_cases: int = 0) -> None:
     """
     plot either cl and cd vs. time or alpha and beta vs. time
 
-    :param settings: dict containing all the paths etc.
     :param controlled_cases: results from the loaded cases with active flow control
     :param uncontrolled_case: reference case containing results from uncontrolled flow past cylinder
     :param plot_coeffs: 'True' means cl and cd will be plotted, otherwise alpha and beta will be plotted wrt to time
     :param factor: factor for converting the physical time into non-dimensional time, t^* = u * t / d
+    :param env: either 'rotatingCylinder2D' or 'rotatingPinball2D'
+    :param control_start: time when the flow control starts
+    :param legend: list containing the legend entries
+    :param n_cases: number of cases which should be plotted
     :return: None
     """
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(6, 6), sharex="col")
@@ -157,16 +166,22 @@ def plot_cl_cd_alpha_beta(settings: dict, controlled_cases: Union[list, pt.Tenso
     if plot_coeffs:
         keys = ["t", "cl", "cd"]
         save_name = "comparison_cl_cd"
-        ax[1].set_ylim(2.95, 3.25)
-        n_cases = range(len(settings["case_name"]) + 1)
-        ylabels = ["$c_L$", "$c_D$"]
+        n_cases = range(n_cases + 1)
         x_min = 0
+        if env == "rotatingCylinder2D":
+            ylabels = ["$c_L$", "$c_D$"]
+            ax[1].set_ylim(2.95, 3.25)
+            top = 0.84
+        else:
+            ylabels = ["$| \sum \\bar{c}_{L, i} |$", "$| \sum \\bar{c}_{D, i} |$"]
+            top = 0.88
     else:
         keys = ["t", "alpha", "beta"]
         save_name = "comparison_alpha_beta"
         ylabels = ["$\\alpha$", "$\\beta$"]
-        n_cases = range(1, len(settings["case_name"]) + 1)
-        x_min = 4 * factor  # control starts at t = 4s, so there are no alpha & beta available for t < 4s
+        n_cases = range(1, n_cases + 1)
+        x_min = control_start * factor          # there are no alpha & beta available for t < control_start
+        top = 0.88
 
     for c in n_cases:
         for i in range(2):
@@ -176,7 +191,7 @@ def plot_cl_cd_alpha_beta(settings: dict, controlled_cases: Union[list, pt.Tenso
                                label="uncontrolled")
                 else:
                     ax[i].plot(controlled_cases[c - 1][keys[0]] * factor, controlled_cases[c - 1][keys[1]],
-                               color=color[c - 1], label=settings["legend"][c - 1])
+                               color=color[c - 1], label=legend[c - 1])
                 ax[i].set_ylabel(ylabels[0])
             else:
                 if c == 0:
@@ -190,8 +205,8 @@ def plot_cl_cd_alpha_beta(settings: dict, controlled_cases: Union[list, pt.Tenso
             ax[i].set_xlim(x_min, controlled_cases[0]["t"].iloc[-1] * factor)
     fig.tight_layout()
     fig.legend(loc="upper center", framealpha=1.0, ncol=2)
-    fig.subplots_adjust(wspace=0.2, top=0.84)
-    plt.savefig(join("..", "plots", "rotatingCylinder2D", f"{save_name}.png"), dpi=340)
+    fig.subplots_adjust(wspace=0.2, top=top)
+    plt.savefig(join("..", "plots", env, f"{save_name}.png"), dpi=340)
     plt.show(block=False)
     plt.pause(2)
     plt.close("all")
@@ -289,7 +304,7 @@ def plot_cl_cd_trajectories(settings: dict, data: list, number: int, e: int = 1,
                 print("omit plotting trajectories of failed cases")
     fig.tight_layout()
     fig.legend(loc="upper right", framealpha=1.0, ncol=3)
-    fig.subplots_adjust(wspace=0.35, top=0.82)
+    fig.subplots_adjust(wspace=0.35, top=0.81)
     plt.savefig(join("..", "plots", "rotatingCylinder2D", f"comparison_traj_cl_cd_{e}.png"), dpi=340)
     plt.show(block=False)
     plt.pause(2)
@@ -423,7 +438,7 @@ if __name__ == "__main__":
                                names=["t", "cd", "cl"])
 
     # then load the controlled ones
-    controlled, p_controlled, traj = [], [], []
+    controlled, traj = [], []
     for case in setup["case_name"]:
         # get the path to the results using the final policy
         load_path = glob(join(setup["load_path"], case, "*", "results_best_policy"))[0]
@@ -437,10 +452,11 @@ if __name__ == "__main__":
                                 names=["t", "omega", "alpha", "beta"]))
 
     # plot cl and cd of the controlled cases vs. the uncontrolled cylinder flow
-    plot_cl_cd_alpha_beta(setup, controlled, uncontrolled, plot_coeffs=True)
+    plot_cl_cd_alpha_beta(controlled, uncontrolled, plot_coeffs=True, legend=setup["legend"],
+                          n_cases=len(setup["case_name"]))
 
     # plot omega of the controlled cases
     plot_omega(setup, traj)
 
     # plot alpha and beta of the controlled cases
-    plot_cl_cd_alpha_beta(setup, traj, plot_coeffs=False)
+    plot_cl_cd_alpha_beta(traj, plot_coeffs=False, legend=setup["legend"], n_cases=len(setup["case_name"]))

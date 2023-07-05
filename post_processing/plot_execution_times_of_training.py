@@ -133,7 +133,7 @@ if __name__ == "__main__":
                     "e200_r10_b10_f8_MB_10models_thr6", "e200_r10_b10_f8_MB_10models_thr5",
                     "e200_r10_b10_f8_MB_10models_thr3"]
 
-    res_pinball = ["e150_r10_b10_f300_MB_1model", "e150_r10_b10_f300_MB_5models_thr4",
+    res_pinball = ["e150_r10_b10_f300_MB_1model", "e150_r10_b10_f300_MB_5models_thr2",
                    "e150_r10_b10_f300_MB_10models_thr5"]
 
     # get the exec. times from log files

@@ -1,6 +1,7 @@
 """
  load and plot the results of th training for the 'rotatingPinball2D' environment
 """
+import pandas as pd
 import torch as pt
 import matplotlib.pyplot as plt
 
@@ -8,7 +9,7 @@ from glob import glob
 from os.path import join
 from os import path, makedirs
 
-from plot_results_cylinder import plot_rewards_vs_episode, plot_coefficients_vs_episode
+from plot_results_cylinder import plot_rewards_vs_episode, plot_coefficients_vs_episode, plot_cl_cd_alpha_beta
 
 
 def load_rewards(load_path: str) -> dict:
@@ -62,8 +63,69 @@ def resort_results(data):
     return data_out
 
 
-def plot_coefficients_of_final_policy():
-    pass
+def read_forces_for_each_cylinder(load_path: str) -> list:
+    """
+    load the cl & cd values for each cylinder of the simulations using the final policy
+
+    :param load_path: path to the top-level directory of the simulation conducted using e.g. the final policy
+    :return: list with a dataframe containing [t, cd, cl] for each cylinder
+    """
+    files, data = ["field_cylinder_a", "field_cylinder_b", "field_cylinder_c"], []
+    for f in files:
+        data.append(pd.read_csv(join(load_path, "postProcessing", f, "0", "surfaceFieldValue.dat"), skiprows=4,
+                    header=0, sep=r"\s+", usecols=[0, 1, 2], names=["t", "cd", "cl"]))
+
+    # the x-component has a parenthesis (components are written out as: (Fx, Fy, Fz)), so remove the parenthesis
+    for i in range(len(data)):
+        data[i]["cd"] = data[i]["cd"].str.replace("(", "", regex=True).astype(float)
+
+    return data
+
+
+def plot_coefficients_for_each_cylinder(data_controlled: list, data_uncontrolled: list, legend_entries: list,
+                                        factor: int = 10) -> None:
+    """
+    plot cl & cd of the final policies wrt the cylinder and time
+
+    :param data_controlled: list containing the data of the uncontrolled flow
+    :param data_uncontrolled: list containing the data of the controlled flow for each case
+    :param legend_entries: list containing the legend entries
+    :param factor: factor for converting the physical time into non-dimensional time, t^* = u * t / d
+    :return: None
+    """
+    fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(6, 8), sharex="col")
+
+    # join the data of uncontrolled & controlled in order to plot it easier
+    data = [data_uncontrolled] + data_controlled
+
+    # use default color cycle and black for the uncontrolled case
+    color = ["black", '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
+
+    for row in range(3):
+        for col in range(2):
+            for c in range(len(data)):
+                if col == 0 and row == 0:
+                    ax[row][col].plot(data[c][row]["t"] * factor, data[c][row]["cl"], label=legend_entries[c],
+                                      color=color[c])
+                    ax[row][col].set_ylabel("$c_{L," + f"{row + 1}" + "}$")
+                elif col == 0:
+                    ax[row][col].plot(data[c][row]["t"] * factor, data[c][row]["cl"], color=color[c])
+                    ax[row][col].set_ylabel("$c_{L," + f"{row + 1}" + "}$")
+                else:
+                    ax[row][col].plot(data[c][row]["t"] * factor, data[c][row]["cd"], color=color[c])
+                    ax[row][col].set_ylabel("$c_{D," + f"{row + 1}" + "}$")
+
+    ax[-1][0].set_xlabel("$t^*$")
+    ax[-1][1].set_xlabel("$t^*$")
+    ax[-1][1].set_xlim(0, 500 * factor)
+    ax[-1][0].set_xlim(0, 500 * factor)
+    fig.tight_layout()
+    fig.legend(loc="upper center", framealpha=1.0, ncol=3)
+    fig.subplots_adjust(wspace=0.4, top=0.92)
+    plt.savefig(join("..", "plots", "rotatingPinball2D", "cl_cd_vs_cylinder_final_policy.png"), dpi=340)
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close("all")
 
 
 if __name__ == "__main__":
@@ -93,7 +155,7 @@ if __name__ == "__main__":
     plot_rewards_vs_episode(results["rewards_mean"], n_cases=len(case_name), mf_episodes=results["MF_episodes"],
                             env="rotatingPinball2D", legend=legend)
     """
-    # plot the rewards with std. (if needed)
+    # plot the rewards with std. deviation (if needed)
     plot_rewards_vs_episode(results["rewards_mean"], results["rewards_std"], n_cases=len(setup["case_name"]),
                             mf_episodes=results["MF_episodes"], env="rotatingPinball2D", legend=legend)
     """
@@ -102,3 +164,31 @@ if __name__ == "__main__":
     plot_coefficients_vs_episode(results["cd_mean"], results["cd_std"], results["cl_mean"], results["cl_std"],
                                  ylabel=["$| \sum \\bar{c}_{L, i} |$", "$| \sum \\bar{c}_{D, i} |$"],
                                  n_cases=len(case_name), env="rotatingPinball2D", legend=legend)
+
+    # get the sum of cd and cl values for all cases
+    uncontrolled = pd.read_csv(join(load_path, "uncontrolled", "postProcessing", "forces", "0", "coefficient.dat"),
+                               skiprows=12, header=0, sep=r"\s+", usecols=[0, 1, 2], names=["t", "cd", "cl"])
+
+    # then load the sum of cl and cd values for the controlled cases
+    controlled = []
+    for case in case_name:
+        # load the trajectories of the cl and cd coefficients
+        controlled.append(pd.read_csv(join(load_path, case, "results_final_policy", "postProcessing", "forces", "0",
+                                           "coefficient.dat"), skiprows=12, header=0, sep=r"\s+", usecols=[0, 1, 2],
+                                      names=["t", "cd", "cl"]))
+
+    # plot the sum of the cl & cd values of the final policy
+    plot_cl_cd_alpha_beta(controlled, uncontrolled, plot_coeffs=True, legend=legend, n_cases=len(case_name),
+                          control_start=200, env="rotatingPinball2D")
+
+    # now read forces for each cylinder and plot them (overwrite 'uncontrolled' & 'controlled' since not used anymore)
+    uncontrolled = read_forces_for_each_cylinder(join(load_path, "uncontrolled"))
+
+    # then do the same thing for the controlled cases
+    controlled = []
+    for case in case_name:
+        # load the trajectories of the cl and cd coefficients
+        controlled.append(read_forces_for_each_cylinder(join(load_path, case, "results_final_policy")))
+
+    # finally plot the forces for each case wrt the cylinder
+    plot_coefficients_for_each_cylinder(controlled, uncontrolled, ["uncontrolled"] + legend)
