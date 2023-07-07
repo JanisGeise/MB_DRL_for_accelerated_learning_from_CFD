@@ -18,10 +18,9 @@ from ppo_data_loader import *
 def plot_coefficients_vs_episode(cd_mean: Union[list, pt.Tensor], cd_std: Union[list, pt.Tensor],
                                  cl_mean: Union[list, pt.Tensor], cl_std: Union[list, pt.Tensor],
                                  actions_mean: Union[list, pt.Tensor] = None,
-                                 actions_std: Union[list, pt.Tensor] = None,
-                                 n_cases: int = 1, plot_action: bool = False,
-                                 ylabel: list = ["$\\bar{c}_L$", "$\\bar{c}_D$", "$\\bar{\omega}$"],
-                                 env: str = "rotatingCylinder2D", legend: list = None) -> None:
+                                 actions_std: Union[list, pt.Tensor] = None, n_cases: int = 1,
+                                 plot_action: bool = False, ylabel: list = None, env: str = "rotatingCylinder2D",
+                                 legend: list = None) -> None:
     """
     plot cl, cd and actions (if specified) depending on the episode (training)
 
@@ -33,16 +32,19 @@ def plot_coefficients_vs_episode(cd_mean: Union[list, pt.Tensor], cd_std: Union[
     :param actions_std: corresponding standard deviation of the actions done over the training periode
     :param n_cases: number of cases to compare (= number of imported data)
     :param plot_action: if 'True' cl, cd and actions will be plotted, otherwise only cl and cd will be plotted
-    :param ylabel: ylabels for plots [cl, cd, action]
+    :param ylabel: ylabels for plots, if none then [cl, cd, omega] is used (mean and std.)
     :param env: either 'rotatingCylinder2D' or 'rotatingPinball2D'
     :param legend: list containing the legend entries
     :return: None
     """
+    if not ylabel:
+        ylabel = [["$\mu(c_L)$", "$\mu(c_D)$", "$\mu(\omega)$"], ["$\sigma(c_L)$", "$\sigma(c_D)$", "$\sigma(\omega)$"]]
+
     if plot_action:
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(6, 3))
+        fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(6, 4), sharex="col")
         n_subfig = 3
     else:
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(6, 3))
+        fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(6, 4), sharex="col")
         n_subfig = 2
 
     # use default color cycle
@@ -52,41 +54,44 @@ def plot_coefficients_vs_episode(cd_mean: Union[list, pt.Tensor], cd_std: Union[
         for i in range(n_subfig):
             if i == 0:
                 if legend:
-                    ax[i].plot(range(len(cl_mean[c])), cl_mean[c], color=color[c], label=legend[c])
+                    ax[0][i].plot(range(len(cl_mean[c])), cl_mean[c], color=color[c], label=legend[c])
+                    ax[1][i].plot(range(len(cl_std[c])), cl_std[c], color=color[c])
                 else:
                     ax[i].plot(range(len(cl_mean[c])), cl_mean[c], color=color[c], label=f"case {c}")
-                ax[i].fill_between(range(len(cl_mean[c])), cl_mean[c] - cl_std[c], cl_mean[c] + cl_std[c],
-                                   color=color[c], alpha=0.3)
-                ax[i].set_ylabel(ylabel[0])
+                    ax[1][i].plot(range(len(cl_std[c])), cl_std[c], color=color[c])
+                ax[0][i].set_ylabel(ylabel[0][0])
+                ax[1][i].set_ylabel(ylabel[1][0])
 
             elif i == 1:
-                ax[i].plot(range(len(cd_mean[c])), cd_mean[c], color=color[c])
-                ax[i].fill_between(range(len(cd_mean[c])), cd_mean[c] - cd_std[c], cd_mean[c] + cd_std[c],
-                                   color=color[c], alpha=0.3)
-                ax[i].set_ylabel(ylabel[1])
+                ax[0][i].plot(range(len(cd_mean[c])), cd_mean[c], color=color[c])
+                ax[1][i].plot(range(len(cd_std[c])), cd_std[c], color=color[c])
+                ax[0][i].set_ylabel(ylabel[0][1])
+                ax[1][i].set_ylabel(ylabel[1][1])
 
             elif plot_action:
-                ax[i].plot(range(len(actions_mean[c])), actions_mean[c], color=color[c])
-                ax[i].fill_between(range(len(actions_mean[c])), actions_mean[c] - actions_std[c],
-                                   actions_mean[c] + actions_std[c], color=color[c], alpha=0.3)
-                ax[i].set_ylabel(ylabel[2])
+                ax[0][i].plot(range(len(actions_mean[c])), actions_mean[c], color=color[c])
+                ax[1][i].plot(range(len(actions_std[c])), actions_std[c], color=color[c])
+                ax[0][i].set_ylabel(ylabel[0][2])
+                ax[1][i].set_ylabel(ylabel[1][2])
 
-            ax[i].set_xlabel("$e$")
-            ax[i].set_xlim(0, max([len(i) for i in cl_mean]))
+            ax[1][i].set_xlabel("$e$")
+            ax[0][i].set_xlim(0, max([len(i) for i in cl_mean]))
+            ax[1][i].set_xlim(0, max([len(i) for i in cl_mean]))
 
     fig.tight_layout()
     fig.legend(loc="upper center", framealpha=1.0, ncol=2)
     if env == "rotatingCylinder2D":
-        fig.subplots_adjust(wspace=0.35, top=0.76)
+        fig.subplots_adjust(wspace=0.35, top=0.80)
     else:
-        fig.subplots_adjust(wspace=0.35, top=0.82)
-    plt.savefig(join("..", "plots", env, "coefficients_vs_episode.png"), dpi=340)
+        fig.subplots_adjust(wspace=0.35, top=0.86)
+    plt.savefig(join("..", "plots", env, "coefficients_vs_episode_.png"), dpi=340)
     plt.show(block=False)
     plt.pause(2)
     plt.close("all")
+    exit()
 
 
-def plot_rewards_vs_episode(reward_mean: Union[list, pt.Tensor], reward_std: Union[list, pt.Tensor] = None,
+def plot_rewards_vs_episode(reward_mean: Union[list, pt.Tensor], reward_std: Union[list, pt.Tensor],
                             n_cases: int = 0, mf_episodes: list = None, env: str = "rotatingCylinder2D",
                             legend: list = None) -> None:
     """
@@ -103,37 +108,42 @@ def plot_rewards_vs_episode(reward_mean: Union[list, pt.Tensor], reward_std: Uni
     # use default color cycle
     color = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
 
-    fig, ax = plt.subplots(figsize=(6, 3))
-    for c in range(n_cases):
-        if legend:
-            ax.plot(range(len(reward_mean[c])), reward_mean[c], color=color[c], label=legend[c])
-        else:
-            ax.plot(range(len(reward_mean[c])), reward_mean[c], color=color[c], label=f"case {c}")
+    fig, ax = plt.subplots(nrows=2, figsize=(6, 4), sharex="col")
+    for i in range(2):
+        for c in range(n_cases):
+            if i == 0:
+                if legend:
+                    ax[i].plot(range(len(reward_mean[c])), reward_mean[c], color=color[c], label=legend[c])
+                else:
+                    ax[i].plot(range(len(reward_mean[c])), reward_mean[c], color=color[c], label=f"case {c}")
+                ax[i].set_ylabel(r"$\mu(r)$")
 
-        # in case the std. of the rewards should be plotted as well
-        if reward_std:
-            ax.fill_between(range(len(reward_mean[c])), reward_mean[c] - reward_std[c], reward_mean[c] + reward_std[c],
-                            color=color[c], alpha=0.3)
-
-        # mark the MF episodes for the 1st training of each case, assuming that the 1st case (c == 0) is model-free
-        if mf_episodes and c > 0:
-            if c == n_cases - 1:
-                # dummy point for legend, because crosses all have different colors, but only required once in legend
-                ax.scatter(mf_episodes[c], reward_mean[c][pt.tensor(mf_episodes[c])], color="black",
-                           label="$CFD$ $episode$", marker="x")
-
-                # overwrite the dummy point with actual results, so just the legend entry is black
-                ax.scatter(mf_episodes[c], reward_mean[c][pt.tensor(mf_episodes[c])], color=color[c],
-                           marker="x")
             else:
-                ax.scatter(mf_episodes[c], reward_mean[c][pt.tensor(mf_episodes[c])], color=color[c],
-                           marker="x")
+                if legend:
+                    ax[i].plot(range(len(reward_std[c])), reward_std[c], color=color[c], label=legend[c])
+                else:
+                    ax[i].plot(range(len(reward_std[c])), reward_std[c], color=color[c], label=f"case {c}")
+                ax[i].set_ylabel(r"$\sigma(r)$")
 
-    ax.set_ylabel("$\\bar{r}$")
-    ax.set_xlabel("$e$")
-    ax.set_xlim(0, max([len(i) for i in reward_mean]))
+            ax[i].set_xlim(0, max([len(i) for i in reward_mean]))
+
+            # mark the MF episodes for the 1st training of each case, assuming that the 1st case (c == 0) is model-free
+            if mf_episodes and c > 0 and i == 0:
+                if c == n_cases - 1:
+                    # dummy point for legend, because x all have different colors, but only required once in legend
+                    ax[i].scatter(mf_episodes[c], reward_mean[c][pt.tensor(mf_episodes[c])], color="black",
+                                  label="$CFD$ $episode$", marker="x")
+
+                    # overwrite the dummy point with actual results, so just the legend entry is black
+                    ax[i].scatter(mf_episodes[c], reward_mean[c][pt.tensor(mf_episodes[c])], color=color[c],
+                                  marker="x")
+                else:
+                    ax[i].scatter(mf_episodes[c], reward_mean[c][pt.tensor(mf_episodes[c])], color=color[c],
+                                  marker="x")
+
+    ax[1].set_xlabel("$e$")
     fig.tight_layout()
-    ax.legend(loc="lower right", framealpha=1.0, ncol=2)
+    ax[0].legend(loc="lower right", framealpha=1.0, ncol=2)
     fig.subplots_adjust(wspace=0.2)
     plt.savefig(join("..", "plots", env, "rewards_vs_episode.png"), dpi=340)
     plt.show(block=False)
@@ -395,26 +405,18 @@ if __name__ == "__main__":
     for i in range(len(averaged_data["MF_episodes"])):
         print(f"{averaged_data['MF_episodes'][i]} CFD episodes for case {i}")
 
-    # plot mean rewards wrt to episode
+    # plot mean rewards wrt to episode and the corresponding std. deviation
     if setup["mark_e_cfd"]:
         # take the 1st case and create list with MF episodes
         n_episodes = list(range(averaged_data["mean_rewards"][0].size()[0]))
         e_cfd = [[i for i in n_episodes if i not in case[0]] for case in averaged_data["e_number_mb"]]
-        plot_rewards_vs_episode(reward_mean=averaged_data["mean_rewards"], n_cases=len(setup["case_name"]),
-                                mf_episodes=e_cfd, legend=setup["legend"])
-
-        # in case std. of rewards should be plotted as well
-        # plot_rewards_vs_episode(reward_mean=averaged_data["mean_rewards"], mf_episodes=e_cfd,
-        #                         reward_std=averaged_data["std_rewards"], n_cases=len(setup["case_name"]),
-        #                         legend=setup["legend"])
-    else:
-        plot_rewards_vs_episode(reward_mean=averaged_data["mean_rewards"], n_cases=len(setup["case_name"]),
+        plot_rewards_vs_episode(reward_mean=averaged_data["mean_rewards"], mf_episodes=e_cfd,
+                                reward_std=averaged_data["std_rewards"], n_cases=len(setup["case_name"]),
                                 legend=setup["legend"])
-
-        # in case std. of rewards should be plotted as well
-        # plot_rewards_vs_episode(reward_mean=averaged_data["mean_rewards"],
-        #                         reward_std=averaged_data["std_rewards"], n_cases=len(setup["case_name"]),
-        #                         legend=setup["legend"])
+    else:
+        plot_rewards_vs_episode(reward_mean=averaged_data["mean_rewards"],
+                                reward_std=averaged_data["std_rewards"], n_cases=len(setup["case_name"]),
+                                legend=setup["legend"])
 
     # avg. the trajectories for cl & cd and plot them wrt t
     plot_mean_std_trajectories(setup, all_data)

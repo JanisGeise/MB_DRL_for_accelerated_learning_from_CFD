@@ -28,9 +28,9 @@ def load_rewards(load_path: str) -> dict:
             if key == "rewards":
                 tmp = [i[key].unsqueeze(-1) for i in obs[episode]]
             elif key == "cl":
-                tmp = [(i["cy_a"] + i["cy_b"] + i["cy_c"]).abs().unsqueeze(-1) for i in obs[episode]]
+                tmp = [(i["cy_a"] + i["cy_b"] + i["cy_c"]).unsqueeze(-1) for i in obs[episode]]
             elif key == "cd":
-                tmp = [(i["cx_a"] + i["cx_b"] + i["cx_c"]).abs().unsqueeze(-1) for i in obs[episode]]
+                tmp = [(i["cx_a"] + i["cx_b"] + i["cx_c"]).unsqueeze(-1) for i in obs[episode]]
             else:
                 continue
             obs_out[key].append(pt.cat(tmp, dim=1))
@@ -130,7 +130,7 @@ def plot_coefficients_for_each_cylinder(data_controlled: list, data_uncontrolled
 
 def plot_omega_for_each_cylinder(data: list, legend_entries: list, factor: int = 1, start_control: int = 200) -> None:
     """
-    plot cl & cd of the final policies wrt the cylinder and time
+    plot omega of the final policies wrt the cylinder and time
 
     :param data: list containing the data of the controlled flow for each case
     :param legend_entries: list containing the legend entries
@@ -189,18 +189,14 @@ if __name__ == "__main__":
     for i, e in enumerate(results["MF_episodes"]):
         print(f"found {len(e)} CFD episodes (= {round(len(e) / len(results['rewards_mean'][i]) * 100, 2)} %)")
 
-    # plot the rewards without std.
-    plot_rewards_vs_episode(results["rewards_mean"], n_cases=len(case_name), mf_episodes=results["MF_episodes"],
-                            env="rotatingPinball2D", legend=legend)
-    """
-    # plot the rewards with std. deviation (if needed)
-    plot_rewards_vs_episode(results["rewards_mean"], results["rewards_std"], n_cases=len(setup["case_name"]),
+    # plot the rewards and their corresponding std. deviation
+    plot_rewards_vs_episode(results["rewards_mean"], results["rewards_std"], n_cases=len(case_name),
                             mf_episodes=results["MF_episodes"], env="rotatingPinball2D", legend=legend)
-    """
 
     # plot cl & cd wrt episode
     plot_coefficients_vs_episode(results["cd_mean"], results["cd_std"], results["cl_mean"], results["cl_std"],
-                                 ylabel=["$| \sum \\bar{c}_{L, i} |$", "$| \sum \\bar{c}_{D, i} |$"],
+                                 ylabel=[["$\mu(\sum c_{L, i})$", "$\mu(\sum c_{D, i})$"],
+                                         ["$\sigma(\sum c_{L, i})$", "$\sigma(\sum c_{D, i})$"]],
                                  n_cases=len(case_name), env="rotatingPinball2D", legend=legend)
 
     # get the sum of cd and cl values for all cases
