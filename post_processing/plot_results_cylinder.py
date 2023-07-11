@@ -88,7 +88,6 @@ def plot_coefficients_vs_episode(cd_mean: Union[list, pt.Tensor], cd_std: Union[
     plt.show(block=False)
     plt.pause(2)
     plt.close("all")
-    exit()
 
 
 def plot_rewards_vs_episode(reward_mean: Union[list, pt.Tensor], reward_std: Union[list, pt.Tensor],
