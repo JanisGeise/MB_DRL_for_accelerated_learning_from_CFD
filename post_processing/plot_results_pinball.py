@@ -138,10 +138,10 @@ def plot_omega_for_each_cylinder(data: list, legend_entries: list, factor: int =
     :param start_control: time when the flow control starts
     :return: None
     """
-    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(6, 8), sharex="col")
+    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(6, 5), sharex="col")
 
     # use default color cycle and black for the uncontrolled case
-    color = ["black", '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
+    color = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
 
     for row in range(3):
         for c in range(len(data)):

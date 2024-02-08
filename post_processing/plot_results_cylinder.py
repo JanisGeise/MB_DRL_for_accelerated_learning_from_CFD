@@ -233,13 +233,14 @@ def plot_omega(settings: dict, controlled_cases: Union[list, pt.Tensor], factor:
     # use default color cycle
     color = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
 
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 2))
     for c in range(len(settings["case_name"])):
         ax.plot(controlled_cases[c]["t"] * factor, controlled_cases[c]["omega"], color=color[c],
                 label=settings["legend"][c])
 
     ax.set_ylabel(r"$\omega$")
     ax.set_xlabel("$t^*$")
+    ax.set_xlim(controlled_cases[0]["t"][0] * factor, controlled_cases[0]["t"].iloc[-1] * factor)
     fig.tight_layout()
     fig.subplots_adjust()
     plt.legend(loc="upper right", framealpha=1.0, ncol=2)
@@ -379,7 +380,7 @@ if __name__ == "__main__":
     # Setup
     setup = {
         "load_path": join("..", "data", "rotatingCylinder2D"),
-        "case_name": ["e200_r10_b10_f8_MF/", "e200_r10_b10_f8_MB_1model/", "e200_r10_b10_f8_MB_5models_thr3",
+        "case_name": ["e200_r10_b10_f8_MF", "e200_r10_b10_f8_MB_1model", "e200_r10_b10_f8_MB_5models_thr3",
                       "e200_r10_b10_f8_MB_5models_thr2", "e200_r10_b10_f8_MB_10models_thr5",
                       "e200_r10_b10_f8_MB_10models_thr3"],
         "mark_e_cfd": True,  # flag if CFD episodes should be marked (iCFD episodes of 1st seed are taken)
