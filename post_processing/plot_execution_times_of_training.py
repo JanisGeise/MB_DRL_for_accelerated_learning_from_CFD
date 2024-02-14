@@ -87,10 +87,10 @@ def plot_composition_of_exec_time(exec_time: list, t_mf: float, labels: list,
 
     # default color cycle
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
-    legend = ["CFD episode", "MB episode", "model training", "PPO training", "other"]
+    legend = ["CFD episodes", "MB episodes", "model training", "PPO training", "other"]
 
     # plot the avg. exec time in [s]
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(6, 3))
     for idx, time in enumerate(exec_time):
         bot = 0
         for i, key in enumerate(time):
@@ -103,17 +103,12 @@ def plot_composition_of_exec_time(exec_time: list, t_mf: float, labels: list,
 
                 # only add label with percentage if > 7%, otherwise area of bar too small in order to see anything
                 if time[key] > 7:
-                    label = [r"{:.2f} \%".format(time[key])]
-                    ax.bar_label(b, label_type="center", labels=label, fontsize=7)
+                    label = [r"{:.2f}\%".format(time[key])]
+                    ax.bar_label(b, label_type="center", labels=label, fontsize=8)
                 bot += ((time[key] / 100) * time["t_total"] / t_mf)
-    ax.set_ylabel(r"$t_{exec} \,/\, t_{MF}$")
-
-    fig.tight_layout()
-    fig.legend(loc="upper center", framealpha=1.0, ncol=3)
-    fig.subplots_adjust(wspace=0.25, top=0.86)
-    plt.savefig(join("..", "plots", environment, "execution_times.png"), dpi=340)
-    plt.show(block=False)
-    plt.pause(2)
+    ax.set_ylabel(r"$T_\mathrm{MB} \,/\, T_\mathrm{MF}$")
+    fig.legend(loc="upper center", bbox_to_anchor=[0.5, 1.06], framealpha=1.0, ncol=3)
+    plt.savefig(join("..", "plots", environment, "execution_times.pdf"), bbox_inches="tight")
     plt.close("all")
 
 
@@ -123,10 +118,10 @@ if __name__ == "__main__":
     t_mf_pinball = get_exec_time_of_mf_training(join("..", "data", "rotatingPinball2D", "e150_r10_b10_f300_MF"))
 
     # x-labels for the plots
-    labels_cylinder = ["$N_{m} = 1$", "$N_{m} = 5$\n$N_{thr} = 3$", "$N_{m} = 5$\n$N_{thr} = 2$",
-                       "$N_{m} = 10$\n$N_{thr} = 6$", "$N_{m} = 10$\n$N_{thr} = 5$", "$N_{m} = 10$\n$N_{thr} = 3$"]
+    labels_cylinder = ["$N_\mathrm{m} = 1$", "$N_\mathrm{m} = 5$\n$N_\mathrm{thr} = 3$", "$N_\mathrm{m} = 5$\n$N_\mathrm{thr} = 2$",
+                       "$N_\mathrm{m} = 10$\n$N_\mathrm{thr} = 6$", "$N_\mathrm{m} = 10$\n$N_\mathrm{thr} = 5$", "$N_\mathrm{m} = 10$\n$N_\mathrm{thr} = 3$"]
 
-    labels_pinball = ["$N_{m} = 1$", "$N_{m} = 5$\n$N_{thr} = 2$", "$N_{m} = 10$\n$N_{thr} = 5$"]
+    labels_pinball = ["$N_\mathrm{m} = 1$", "$N_\mathrm{m} = 5$\n$N_\mathrm{thr} = 2$", "$N_\mathrm{m} = 10$\n$N_\mathrm{thr} = 5$"]
 
     # MB-trainings for rotatingCylinder2D and rotatingPinball2D
     res_cylinder = ["e200_r10_b10_f8_MB_1model", "e200_r10_b10_f8_MB_5models_thr3", "e200_r10_b10_f8_MB_5models_thr2",
