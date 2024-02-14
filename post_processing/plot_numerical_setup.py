@@ -7,7 +7,9 @@ import torch as pt
 from os.path import join
 from os import path, makedirs
 from matplotlib import pyplot as plt
-from matplotlib.patches import Circle, Rectangle
+from matplotlib.patches import Circle, Rectangle, Arc, RegularPolygon
+from numpy import radians as rad
+import numpy as np
 
 
 def get_probe_locations(load_dir: str) -> pt.Tensor:
@@ -21,6 +23,30 @@ def get_probe_locations(load_dir: str) -> pt.Tensor:
     # get coordinates of probes, omit appending empty lists and map strings to floats
     coord = [re.findall(pattern, line) for i, line in enumerate(loc) if re.findall(pattern, line) and i > idx]
     return pt.tensor([list(map(float, i[0].split())) for i in coord])
+
+
+def drawCirc(ax, radius, centX, centY, angle_, theta2_, color_='black'):
+    """Draw partial circle with arrow.
+
+    Taken and modified from:
+    https://stackoverflow.com/questions/37512502/how-to-make-arrow-that-loops-in-matplotlib
+    """
+    arc = Arc([centX,centY],radius,radius,angle=angle_,
+          theta1=0, theta2=theta2_, capstyle='round', linestyle='-', lw=1, color=color_)
+    ax.add_patch(arc)
+    endX=centX+(radius/2)*np.cos(rad(theta2_+angle_))
+    endY=centY+(radius/2)*np.sin(rad(theta2_+angle_))
+
+    ax.add_patch(                    #Create triangle as arrow head
+        RegularPolygon(
+            (endX, endY),            # (x,y)
+            3,                       # number of vertices
+            radius/9,                # radius
+            rad(angle_+theta2_),     # orientation
+            color=color_
+        )
+    )
+    #ax.set_xlim([centX-radius,centY+radius]) and ax.set_ylim([centY-radius,centY+radius]) 
 
 
 def plot_numerical_setup_cylinder(load_path: str) -> None:
@@ -46,64 +72,82 @@ def plot_numerical_setup_cylinder(load_path: str) -> None:
 
     # structure in blockMeshDict always the same: [lengthX 2.2, lengthY 0.41, cylinderX 0.2, cylinderY 0.2, radius 0.05]
     l, h, pos_x, pos_y, r = [float(loc[i].strip(";\n").split()[1]) for i in range(16, 21)]
+    l *= 0.5
 
     # plot cylinder, probe locations and annotate the domain
-    fig, ax = plt.subplots(figsize=(10, 3))
-    ax.plot(pos_probes[:, 0], pos_probes[:, 1], linestyle="None", marker="o", color="red", label="probes")
+    fig, ax = plt.subplots(figsize=(6, 2))
+    ax.scatter(pos_probes[:, 0], pos_probes[:, 1], marker="x",  c="C1", s=10, linewidth=1)
 
-    # dummy point for legend
-    ax.scatter(-10, -10, marker="o", color="black", alpha=0.4, label="cylinder")
-    circle = Circle((pos_x, pos_y), radius=r, color="black", alpha=0.4)
+    # cylinders and frame
+    circle = Circle((pos_x, pos_y), radius=r, color="gray")
     rectangle = Rectangle((0, 0), width=l, height=h, edgecolor="black", linewidth=2, facecolor="none")
     ax.add_patch(circle)
     ax.add_patch(rectangle)
-    fig.legend(loc="lower center", framealpha=1.0, fontsize=10, ncol=2)
     ax.set_xlim(0, l)
     ax.set_ylim(0, h)
     ax.set_xticks([])
     ax.set_yticks([])
 
-    # annotate inlet & outlet
-    plt.arrow(-0.05, -0.05, 0.1, 0.0, color="black", head_width=0.02, clip_on=False)
-    plt.arrow(-0.05, -0.05, 0.0, 0.1, color="black", head_width=0.02, clip_on=False)
-    plt.arrow(-0.1, h * 2 / 3 + 0.025, 0.075, -0.05, color="black", head_width=0.015, clip_on=False)
-    plt.arrow(-0.1 + l, h * 2 / 3, 0.075, -0.05, color="black", head_width=0.015, clip_on=False)
+    # coordinate system
+    ax.arrow(0, 0, 0.1, 0.0, color="C3", lw=1.5, head_width=0.02, clip_on=False, zorder=5)
+    ax.arrow(0, 0, 0.0, 0.1, color="C3", lw=1.5, head_width=0.02, clip_on=False, zorder=5)
+    ax.text(0.1, -0.04, r"$x$")
+    ax.text(-0.04, 0.1, r"$y$")
 
-    plt.annotate("$inlet$", (-0.17, h * 2 / 3 + 0.05), annotation_clip=False, fontsize=13)
-    plt.annotate("$\\frac{x}{d}$", (0.1, -0.065), annotation_clip=False, fontsize=16)
-    plt.annotate("$\\frac{y}{d}$", (-0.1, 0.065), annotation_clip=False, fontsize=16)
-    plt.annotate("$outlet$", (-0.2 + l, h * 2 / 3 + 0.01), annotation_clip=False, fontsize=13)
+    # annotate inlet, outlet, and walls
+    ax.text(-0.04, h*0.5, "inlet", rotation=90, va="center")
+    ax.text(l-0.04, h*0.5, "outlet", rotation=90, va="center")
+    ax.text(0.5*l, 0.01, "wall")
+    ax.text(0.5*l, h-0.035, "wall")
 
-    # annotate the dimensions & position of the domain
-    pos = {"xy": [(0, h + 0.04), (0, h), (l, h), (pos_x - r - 0.01, pos_y - 0.1), (l, h), (l, 0), (l + 0.04, h),
-                  (pos_x, pos_y + 0.9 * r), (0, pos_y)],
-           "xytxt": [(l, h + 0.04), (0, h + 0.075), (l, h + 0.075), (pos_x + r + 0.01, pos_y - 0.1), (l + 0.075, h),
-                     (l + 0.075, 0),
-                     (l + 0.04, 0), (pos_x, h), (pos_x - 0.9 * r, pos_y)],
-           "style": [("<->", "-"), ("-", "--"), ("-", "--"), ("<->", "-"), ("-", "--"), ("-", "--"), ("<->", "-"),
-                     ("<->", "-"), ("<->", "-")]
-           }
-    for i in range(len(pos["style"])):
-        plt.annotate("", xy=pos["xy"][i], xytext=pos["xytxt"][i],
-                     arrowprops=dict(arrowstyle=pos["style"][i][0], color="black", linestyle=pos["style"][i][1]),
-                     annotation_clip=False)
+    # annotate domain dimensions
+    anno_props = {
+        "arrowprops" : dict(arrowstyle='<->', shrinkA=0, shrinkB=0),
+        "color" : "k",
+        "annotation_clip" : False
+    }
+    ax.annotate("", xy=(0, h+0.02), xytext=(l, h+0.02), **anno_props)
+    ax.annotate("", xy=(l+0.02, 0), xytext=(l+0.02, h), **anno_props)
+    ax.annotate("", xy=(0, 0.2), xytext=(0.15, 0.2), **anno_props)
+    ax.annotate("", xy=(0.2, 0.25), xytext=(0.2, 0.41), **anno_props)
+    ax.annotate("", xy=(0.2-0.05, 0.1), xytext=(0.2+0.05, 0.1), **anno_props)
+    anno_props = {
+        "arrowprops" : dict(arrowstyle='-', shrinkA=0, shrinkB=0, linestyle="--"),
+        "color" : "k",
+        "annotation_clip" : False
+    }
+    ax.annotate("", xy=(l, 0), xytext=(l+0.03, 0), **anno_props)
+    ax.annotate("", xy=(l, h), xytext=(l+0.03, h), **anno_props)
+    ax.annotate("", xy=(0, h), xytext=(0, h+0.03), **anno_props)
+    ax.annotate("", xy=(l, h), xytext=(l, h+0.03), **anno_props)
+    ax.annotate("", xy=(0.15, 0.1-0.01), xytext=(0.15, 0.2), **anno_props)
+    ax.annotate("", xy=(0.25, 0.1-0.01), xytext=(0.25, 0.2), **anno_props)
+    ax.text(0.5*l, h+0.03, r"$22d$", ha="center")
+    ax.text(0.095, 0.2+0.01, r"$1.5d$", ha="center")
+    ax.text(0.2, 0.1+0.01, r"$d$", ha="center")
+    ax.text(l+0.03, 0.5*h, r"$4.1d$", rotation=90, va="center")
+    ax.text(0.2-0.035, 0.325, r"$1.6d$", rotation=90, va="center")
+    ax.scatter(pos_x, pos_y, marker="+", c="k", s=15, linewidth=1)
 
-    plt.annotate(f"${l / (2 * r)}$", (l / 2, h + 0.07), annotation_clip=False)
-    plt.annotate(f"${h / (2 * r)}$", (l + 0.07, h / 2), annotation_clip=False)
-    plt.annotate("$d$", (pos_x - r / 4, pos_y - 3 * r))
-    plt.annotate("${:.2f}$".format((h - (pos_y + r)) / (2 * r)), (pos_x + 0.025, pos_y + 2.25 * r))
-    plt.annotate("${:.2f}$".format((pos_x - r) / (2 * r)), (pos_x - 3.25 * r, pos_y + 0.5 * r))
+    drawCirc(ax, 0.04, 0.2, 0.2, 0, 240, "C1")
+    ax.text(0.2+0.02, 0.2-0.02, r"$\omega$", c="C1", va="center", ha="center")
 
-    ax.plot((pos_x - r, pos_x - r), (pos_y, pos_y - 0.15), color="black", linestyle="--", lw=1)
-    ax.plot((pos_x + r, pos_x + r), (pos_y, pos_y - 0.15), color="black", linestyle="--", lw=1)
-    ax.plot(pos_x, pos_y, marker="+", color="black")
+    # velocity profile
+    y = pt.linspace(0.005, h-0.005, 40)
+    vel = (1 - 4*(0.5-y/h)**2)*0.06
+    ax.plot(vel, y, c="C0")
+    y = pt.linspace(0, h, 10)
+    vel = (1 - 4*(0.5-y/h)**2)*0.06
+    anno_props = {
+        "arrowprops" : dict(arrowstyle='<-', shrinkA=0, shrinkB=1.5, linestyle="-", color="C0"),
+        "color" : "C0",
+        "annotation_clip" : False
+    }
+    for (yi, vi) in zip(y, vel):
+        ax.annotate("", xy=(0, yi.item()), xytext=(vi.item(), yi.item()),**anno_props)
 
     ax.set_aspect("equal")
-    fig.tight_layout()
-    fig.subplots_adjust(left=0.1, right=0.92)
-    plt.savefig(join("..", "plots", "rotatingCylinder2D", "domain_cylinder.png"), dpi=340)
-    plt.show(block=False)
-    plt.pause(2)
+    plt.savefig(join("..", "plots", "rotatingCylinder2D", "domain_cylinder.pdf"), bbox_inches="tight")
     plt.close("all")
 
 
@@ -131,78 +175,104 @@ def plot_numerical_setup_pinball(load_path: str) -> None:
     # get domain length and height
     xmin, xmax = float(loc[19].strip(";\n").split()[1].strip(";")), float(loc[20].strip(";\n").split()[1])
     ymin, ymax = float(loc[21].strip(";\n").split()[1].strip(";")), float(loc[22].strip(";\n").split()[1])
+    norm = 6
+    xmax /= norm * 1.5
+    xmin /= norm
+    ymax /= norm
+    ymin /= norm
+
     l = xmax - xmin
     h = ymax - ymin
 
     # get cylinder positions
-    pos_x = [float(loc[i].strip(";\n").split()[1]) for i in range(76, 79)]
-    pos_y = [float(loc[i].strip(";\n").split()[1]) for i in range(79, 82)]
-    r = [float(loc[i].strip(";\n").split()[1]) for i in range(82, 85)]
+    norm_in = 3
+    pos_x = [float(loc[i].strip(";\n").split()[1]) / norm_in for i in range(76, 79)]
+    pos_y = [float(loc[i].strip(";\n").split()[1]) / norm_in for i in range(79, 82)]
+    r = [float(loc[i].strip(";\n").split()[1]) / norm_in for i in range(82, 85)]
 
-    # plot cylinder, probe locations and annotate the domain
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(pos_probes[:, 0], pos_probes[:, 1], linestyle="None", marker="o", color="red", label="probes")
+    # probe locations
+    fig, ax = plt.subplots(figsize=(6, 3))
+    ax.scatter(pos_probes[:, 0]/norm_in, pos_probes[:, 1]/norm_in, marker="x", color="C1", s=10, linewidth=1, zorder=6)
 
-    # dummy point for legend
-    ax.scatter(-10, -10, marker="o", color="black", alpha=0.4, label="cylinder")
-    rectangle = Rectangle((-6, -6), width=l, height=h, edgecolor="black", linewidth=2, facecolor="none")
+    # symmetry lines
+    ax.plot([xmin, xmax], [0, 0], ls="--", lw=1, c="k")
+    ax.plot([0, 0], [ymin, ymax], ls="--", lw=1, c="k")
 
     # plot cylinders
     for c in range(len(r)):
-        circle = Circle((pos_x[c], pos_y[c]), radius=r[c], color="black", alpha=0.4)
+        circle = Circle((pos_x[c], pos_y[c]), radius=r[c], color="gray")
         ax.add_patch(circle)
-        ax.annotate(f"${c+1}$", (pos_x[c], pos_y[c]), annotation_clip=False, fontsize=13, va="center", ha="center")
+        ax.scatter(pos_x[c], pos_y[c], marker="+", c="k", s=15, linewidth=1)
+        drawCirc(ax, 0.2, pos_x[c], pos_y[c], 0, 240, "C1")
+        ax.text(pos_x[c]+0.05, pos_y[c]-0.05, rf"$\omega_{c+1}$", c="C1", va="center", ha="center")
 
+    # inlet velocity
+    ax.plot([xmin+0.125, xmin+0.125, xmin+0.1, xmin+0.1], [ymin, 0, 0, ymax], c="C0", lw=1)
+    y = pt.linspace(ymin*0.9, ymax*0.9, 10)
+    vel = [xmin+0.125 if yi.item() < 0 else xmin+0.1 for yi in y]
+    anno_props = {
+        "arrowprops" : dict(arrowstyle='<-', shrinkA=0, shrinkB=1, linestyle="-", color="C0", mutation_scale=8),
+        "color" : "C0",
+        "annotation_clip" : False
+    }
+    for (yi, vi) in zip(y, vel):
+        plt.annotate("", xy=(xmin, yi.item()), xytext=(vi, yi.item()),**anno_props)
+    ax.text(xmin+0.135, 0.5*ymin, r"$U_\mathrm{in}+\varepsilon$", rotation=-90, va="center", c="C0")
+    ax.text(xmin+0.12, 0.5*ymax, r"$U_\mathrm{in}-\varepsilon$", rotation=-90, va="center", c="C0")
+
+
+    # frame
+    rectangle = Rectangle((xmin, ymin), width=l, height=h, edgecolor="black", linewidth=2, facecolor="none")
     ax.add_patch(rectangle)
-    fig.legend(loc="lower center", framealpha=1.0, fontsize=10, ncol=2)
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
     ax.set_xticks([])
     ax.set_yticks([])
 
-    # annotate inlet & outlet
-    plt.arrow(-8.35, 1.75, 2, -1, color="black", head_width=0.25, clip_on=False)
-    plt.arrow(17.35, 1.75, 2, -1, color="black", head_width=0.25, clip_on=False)
-    plt.arrow(-6.75, -6.75, 0, 2, color="black", head_width=0.25, clip_on=False)
-    plt.arrow(-6.75, -6.75, 2, 0, color="black", head_width=0.25, clip_on=False)
+    # coordinate system
+    ax.arrow(0, 0, 0.1, 0.0, color="C3", lw=1.5, head_width=0.02, clip_on=False, zorder=5)
+    ax.arrow(0, 0, 0.0, 0.1, color="C3", lw=1.5, head_width=0.02, clip_on=False, zorder=5)
+    ax.text(0.1, -0.09, r"$x$")
+    ax.text(-0.09, 0.075, r"$y$")
 
-    plt.annotate("$inlet$", (-3 + xmin, h * 2 / 3 + 0.05 + ymin), annotation_clip=False, fontsize=12)
-    plt.annotate("$outlet$", (-3.5 + l + xmin, h * 2 / 3 + 0.01 + ymin), annotation_clip=False, fontsize=12)
-    plt.annotate("$\\frac{x}{d}$", (2.05 + xmin, -0.75 + ymin), annotation_clip=False, fontsize=16, va="center")
-    plt.annotate("$\\frac{y}{d}$", (-1.5 + xmin, 0.25 + ymin), annotation_clip=False, fontsize=16)
+    # domain dimensions
+    anno_props = {
+        "arrowprops" : dict(arrowstyle='<->', shrinkA=0, shrinkB=0),
+        "color" : "k",
+        "annotation_clip" : False
+    }
+    ax.annotate("", xy=(xmin, ymax+0.05), xytext=(xmax, ymax+0.05), **anno_props)
+    ax.annotate("", xy=(0.75*xmax, 0), xytext=(0.75*xmax, ymax), **anno_props)
+    ax.annotate("", xy=(0.75*xmax, 0), xytext=(0.75*xmax, ymin), **anno_props)
+    ax.annotate("", xy=(xmin, 0.75*ymin), xytext=(0, 0.75*ymin), **anno_props)
+    ax.annotate("", xy=(xmin*0.65, -0.5/norm_in), xytext=(xmin*0.65, 0.5/norm_in), **anno_props)
+    ax.annotate("", xy=(1/norm_in, -0.75/norm_in), xytext=(1/norm_in, 0.75/norm_in), **anno_props)
+    ax.annotate("", xy=(-1.3/norm_in, 0.5*ymax), xytext=(0, 0.5*ymax), **anno_props)
+    anno_props = {
+        "arrowprops" : dict(arrowstyle='-', shrinkA=0, shrinkB=0, linestyle="--"),
+        "color" : "k",
+        "annotation_clip" : False
+    }
+    ax.annotate("", xy=(xmin, ymax), xytext=(xmin, ymax+0.075), **anno_props)
+    ax.annotate("", xy=(xmax, ymax), xytext=(xmax, ymax+0.075), **anno_props)
+    ax.annotate("", xy=(xmin*0.65-0.025, 0.5/norm_in), xytext=(-1.3/norm_in, 0.5/norm_in), **anno_props)
+    ax.annotate("", xy=(xmin*0.65-0.025, -0.5/norm_in), xytext=(-1.3/norm_in, -0.5/norm_in), **anno_props)
+    ax.annotate("", xy=(0, 0.75/norm_in), xytext=(1/norm_in+0.025, 0.75/norm_in), **anno_props)
+    ax.annotate("", xy=(0, -0.75/norm_in), xytext=(1/norm_in+0.025, -0.75/norm_in), **anno_props)
+    ax.annotate("", xy=(-1.3/norm_in, 0), xytext=(-1.3/norm_in, 0.5*ymax+0.025), **anno_props)
+    ax.text(xmin*0.65-0.1, 0.05, r"$d$", va="center", rotation=90)
+    ax.text(1/norm_in-0.1, 0.05, r"$1.5d$", va="center", rotation=90)
+    ax.text(0.75*xmax-0.1, 0.5*ymax, r"$6d$", va="center", rotation=90)
+    ax.text(0.75*xmax-0.1, 0.5*ymin, r"$6d$", va="center", rotation=90)
+    ax.text(0.5*(xmin+xmax), ymax+0.075, r"$22d$", ha="center")
+    ax.text(-0.65/norm_in, 0.5*ymax+0.025, r"$1.3d$", ha="center")
+    ax.text(0.5*xmin, 0.75*ymin+0.025, r"$6d$", ha="center")
 
-    # annotate domain dimensions
-    plt.annotate(f"${l / (2 * r[0])}$", (l / 2 + xmin, h + 1 + ymin), annotation_clip=False)
-    plt.annotate(f"${h / (2 * r[0])}$", (l + 1 + xmin, h / 2 + ymin), annotation_clip=False)
-
-    # annotate the dimensions & position of the domain
-    pos = {"xy": [(xmin, ymin + h + 0.75), (xmin, h + ymin), (xmin + l, ymin + h), (xmin + l, ymin + h),
-                  (xmin + l, ymin), (xmin + l + 0.75, ymin + h)],
-           "xytxt": [(xmin + l, ymin + h + 0.75), (xmin, ymin + h + 1.25), (xmin + l, ymin + h + 1.25),
-                     (xmin + l + 1.25, ymin + h), (xmin + l + 1.25, ymin), (xmin + l + 0.75, ymin)],
-           "style": [("<->", "-"), ("-", "--"), ("-", "--"), ("-", "--"), ("-", "--"), ("<->", "-")]
-           }
-    for i in range(len(pos["style"])):
-        plt.annotate("", xy=pos["xy"][i], xytext=pos["xytxt"][i], annotation_clip=False,
-                     arrowprops=dict(arrowstyle=pos["style"][i][0], color="black", linestyle=pos["style"][i][1],
-                                     mutation_scale=15))
-
-    # annotate position of 1st cylinder
-    plt.annotate("${:.2f}$".format((h - (pos_y[0] + r[0])) / (2 * r[0])), (pos_x[0] + 0.2, pos_y[0] + 6 * r[0]))
-    plt.annotate("${:.2f}$".format(abs(pos_x[0] - r[0]) / (2 * r[0])), (pos_x[0] - 6 * r[0], pos_y[0] + 0.5 * r[0]))
-    plt.annotate("", xy=(xmin, pos_y[0]), xytext=(pos_x[0] - r[0], pos_y[0]),
-                 arrowprops=dict(arrowstyle="<->", color="black", linestyle="-", mutation_scale=15),
-                 annotation_clip=False)
-    plt.annotate("", xy=(pos_x[0], pos_y[0] + r[0]), xytext=(pos_x[0], ymin + h),
-                 arrowprops=dict(arrowstyle="<->", color="black", linestyle="-", mutation_scale=15),
-                 annotation_clip=False)
+    ax.text(xmin-0.125, 0, "inlet", rotation=90, va="center")
+    ax.text(xmax-0.125, 1/norm_in, "outlet", rotation=90, va="center")
 
     ax.set_aspect("equal")
-    fig.tight_layout()
-    fig.subplots_adjust(left=0.1, right=0.92)
-    plt.savefig(join("..", "plots", "rotatingPinball2D", "domain_pinball.png"), dpi=340)
-    plt.show(block=False)
-    plt.pause(2)
+    plt.savefig(join("..", "plots", "rotatingPinball2D", "domain_pinball.pdf"), bbox_inches="tight")
     plt.close("all")
 
 

@@ -58,7 +58,7 @@ def resort_results(data):
     """
     data_out = {}
     for key in list(data[0].keys()):
-        data_out[key] = [i[key] for i in results]
+        data_out[key] = [i[key] for i in data]
 
     return data_out
 
