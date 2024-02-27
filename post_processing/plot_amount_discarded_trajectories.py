@@ -58,23 +58,11 @@ def plot_discarded_trajectories(discards, xtick_list, env: str = "rotatingCylind
 
     # plot the amount of discards
     fig, ax = plt.subplots(figsize=(6, 2))
-    for i, case in enumerate(discards):
-        if i == 0:
-            ax.scatter(pt.ones((case.size()[1],)) * i, case[0, :], color="black", label="seed no.", marker="o",
-                       alpha=0.4)
-            ax.scatter(i, pt.mean(case, dim=1)[0], color="red", marker="x", label="mean discards")
-        else:
-            ax.scatter(pt.ones((case.size()[1],)) * i, case[0, :], color="black", marker="o", alpha=0.4)
-            ax.scatter(i, pt.mean(case, dim=1)[0], color="red", marker="x")
-
-    ax.set_xticks(range(len(xtick_list)), xtick_list)
-    ax.set_ylabel("$N_{d}$")
+    ax.boxplot(discards, labels=xtick_list)
+    ax.set_ylabel("$N_\mathrm{d}$")
     fig.tight_layout()
-    plt.legend(loc="upper right", framealpha=1.0, ncol=2, fontsize=10)
     fig.subplots_adjust(wspace=0.25, top=0.98)
-    plt.savefig(join("..", "plots", env, "discarded_trajectories.png"), dpi=340)
-    plt.show(block=False)
-    plt.pause(2)
+    plt.savefig(join("..", "plots", env, "discarded_trajectories.pdf"), bbox_inches="tight")
     plt.close("all")
 
 
@@ -83,13 +71,15 @@ if __name__ == "__main__":
     cases_cylinder = ["e200_r10_b10_f8_MB_1model", "e200_r10_b10_f8_MB_5models_thr3", "e200_r10_b10_f8_MB_5models_thr2",
                       "e200_r10_b10_f8_MB_10models_thr6", "e200_r10_b10_f8_MB_10models_thr5",
                       "e200_r10_b10_f8_MB_10models_thr3"]
-    labels_cylinder = ["$N_{m} = 1$", "$N_{m} = 5$\n$N_{thr} = 3$", "$N_{m} = 5$\n$N_{thr} = 2$",
-                       "$N_{m} = 10$\n$N_{thr} = 6$", "$N_{m} = 10$\n$N_{thr} = 5$", "$N_{m} = 10$\n$N_{thr} = 3$"]
+    labels_cylinder = ["$N_\mathrm{m} = 1$", "$N_\mathrm{m} = 5$\n$N_\mathrm{thr} = 3$",
+                       "$N_\mathrm{m} = 5$\n$N_\mathrm{thr} = 2$", "$N_\mathrm{m} = 10$\n$N_\mathrm{thr} = 6$",
+                       "$N_\mathrm{m} = 10$\n$N_\mathrm{thr} = 5$", "$N_\mathrm{m} = 10$\n$N_\mathrm{thr} = 3$"]
 
     # cases of the rotatingPinball2D
     cases_pinball = ["e150_r10_b10_f300_MB_1model", "e150_r10_b10_f300_MB_5models_thr2",
                      "e150_r10_b10_f300_MB_10models_thr5"]
-    labels_pinball = ["$N_{m} = 1$", "$N_{m} = 5$\n$N_{thr} = 2$", "$N_{m} = 10$\n$N_{thr} = 5$"]
+    labels_pinball = ["$N_\mathrm{m} = 1$", "$N_\mathrm{m} = 5$\n$N_\mathrm{thr} = 2$",
+                      "$N_\mathrm{m} = 10$\n$N_\mathrm{thr} = 5$"]
 
     # load the model-generated and discarded trajectories from the log files
     discards_cylinder = [load_amount_mb_trajectories_and_discards(join("..", "data", "rotatingCylinder2D", c)) for c in
@@ -97,6 +87,10 @@ if __name__ == "__main__":
 
     discards_pinball = [load_amount_mb_trajectories_and_discards(join("..", "data", "rotatingPinball2D", c)) for c in
                         cases_pinball]
+
+    # resort since we don't need the amount of MB episodes here
+    discards_cylinder = [d[0, :] for d in discards_cylinder]
+    discards_pinball = [d[0, :] for d in discards_pinball]
 
     # plot the results
     plot_discarded_trajectories(discards_cylinder, labels_cylinder)
