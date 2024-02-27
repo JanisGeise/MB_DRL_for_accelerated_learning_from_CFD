@@ -87,7 +87,7 @@ def plot_composition_of_exec_time(exec_time: list, t_mf: float, labels: list,
 
     # default color cycle
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
-    legend = ["CFD episodes", "MB episodes", "model training", "PPO training", "other"]
+    legend = ["CFD sampling", "MB sampling", "model update", "PPO update", "other"]
 
     # plot the avg. exec time in [s]
     fig, ax = plt.subplots(figsize=(6, 3))
