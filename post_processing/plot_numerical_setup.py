@@ -199,12 +199,13 @@ def plot_numerical_setup_pinball(load_path: str) -> None:
     ax.plot([0, 0], [ymin, ymax], ls="--", lw=1, c="k")
 
     # plot cylinders
+    omega_index = (1, 3, 2)
     for c in range(len(r)):
         circle = Circle((pos_x[c], pos_y[c]), radius=r[c], color="gray")
         ax.add_patch(circle)
         ax.scatter(pos_x[c], pos_y[c], marker="+", c="k", s=15, linewidth=1)
         drawCirc(ax, 0.2, pos_x[c], pos_y[c], 0, 240, "C1")
-        ax.text(pos_x[c]+0.05, pos_y[c]-0.05, rf"$\omega_{c+1}$", c="C1", va="center", ha="center")
+        ax.text(pos_x[c]+0.05, pos_y[c]-0.05, rf"$\omega_{omega_index[c]}$", c="C1", va="center", ha="center")
 
     # inlet velocity
     ax.plot([xmin+0.125, xmin+0.125, xmin+0.1, xmin+0.1], [ymin, 0, 0, ymax], c="C0", lw=1)
