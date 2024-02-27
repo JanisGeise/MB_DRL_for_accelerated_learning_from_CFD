@@ -30,7 +30,7 @@ The DRL logic and orchestration of simulations are implemented in the [drlFoam](
 
 ### Results and analyses
 
-The results of all training can be downloaded [here](ADD LINK HERE). Extract the archive in the repository's top-level folder by running `tar xzf data.tar.gz`. The scripts to process and visualize the results are available under *post_processing*. Run the scripts from within the subfolder, e.g.:
+The results of all training can be downloaded [here](https://cloud.tu-braunschweig.de/s/54dDp56TcQwrtP2). Extract the archive in the repository's top-level folder by running `tar xzf data.tar.gz`. The scripts to process and visualize the results are available under *post_processing*. Run the scripts from within the subfolder, e.g.:
 ```
 # starting from the repositories top-level folder
 cd post_processing
